@@ -1,0 +1,32 @@
+//deploy index.html file with Ansible User
+//ansible user name as vaibhav
+
+
+pipeline {
+    agent {
+        label "built-in"
+        }
+
+    stages{
+		
+		stage("clone") {
+            steps {
+			dir ("/ramu"){
+				sh "rm -rf *"
+                git 'https://github.com/satish7498/httpd.git'
+                sh "chmod 777 *"
+            }
+        }
+	}	
+		
+        stage("ansible") {
+            steps {
+			dir ("/ramu"){			   			   			    			 			    			        
+				sh 'sudo -u vaibhav ansible all -b -m yum -a "pkg=httpd state=present"'
+				sh 'sudo -u vaibhav ansible all -b -m service -a "name=httpd state=started"'
+				sh 'sudo -u vaibhav ansible all -b -m copy -a "src=index.html dest=/var/www/html/"'			    
+				}
+            }
+        }
+	}
+}
