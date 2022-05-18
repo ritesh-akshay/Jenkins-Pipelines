@@ -1,0 +1,50 @@
+pipeline{
+	agent {
+		label "built-in"
+			}
+	stages{
+		
+		stage ('0-Docker-down-and-System-Prune'){
+			steps{
+		    dir ("/roshan"){
+				sh "docker-compose down"
+				sh "docker system prune -a -f"
+				}
+			}		
+		}
+		
+		stage ('1-Clone-Repo'){
+			steps{
+		    dir ("/satish"){
+				sh "rm -rf *"
+				git 'https://github.com/satish7498/hello-world.git'
+				}
+			}		
+		}
+		
+		stage ('2-Build-War'){
+			steps{
+		    dir ("/satish"){
+				sh "mvn clean install"
+				sh "cp /satish/webapp/target/webapp.war /roshan"
+				}
+			}		
+		}
+		
+		
+		stage ('3-Deploy-war-in-Container') {
+			steps {
+			    dir ("/roshan"){
+				   sh "rm -rf *"
+				   git 'https://github.com/satish7498/My-Docker-Files.git'
+				   sh "cp /satish/webapp/target/webapp.war /roshan"
+				   sh 'docker build -t satish7498/my-app-1.0 .'
+				   sh "docker-compose up -d"
+                    }
+                }		
+			}
+		
+	}
+}
+
+
