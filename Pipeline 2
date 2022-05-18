@@ -1,0 +1,45 @@
+pipeline{
+	agent {
+		label "built-in"
+			}
+	
+	stages{
+	    
+	    stage ('Delete-&-Clone-Repo'){
+			steps{
+		    dir ("/satish"){
+				sh "rm -rf *"
+				git 'https://github.com/satish7498/hello-world.git'
+				}
+			}		
+		}
+		
+		stage ('Build-Code'){
+			steps{
+		    dir ("/satish"){
+				sh "mvn clean install"
+				}
+			}		
+		}
+		
+		stage ('Copy-in-S3'){
+			steps{
+		    dir ("/satish/webapp/target"){
+				sh "aws s3 cp webapp.war s3://my7498"
+				}
+			}		
+		}
+		
+		stage ('Deploy-war-in-slave-dir') {
+		agent {node 'slave-one'}
+			steps {
+			    dir ("/slave-dir"){
+                   sh "aws s3 cp s3://my7498/webapp.war /slave-dir"
+				   sh "docker build -t my-tomcat ."
+				   sh "docker run -d -p 8035:8080 my-tomcat"
+				   sh "docker run -d -p 8045:8080 my-tomcat"
+                    }
+                }		
+			}
+		}
+}
