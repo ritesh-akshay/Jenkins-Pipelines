@@ -1,0 +1,77 @@
+pipeline{
+	agent {
+		label "built-in"
+			}
+	environment { dockerhub=credentials("docker") }
+	stages{
+	    
+	    stage ('Delete-&-Clone-Repo'){
+			steps{
+		    dir ("/satish"){
+				sh "rm -rf *"
+				git 'https://github.com/satish7498/hello-world.git'
+				}
+			}		
+		}
+		
+		stage ('Build-Code'){
+			steps{
+		    dir ("/satish"){
+				sh "mvn clean install"
+				}
+			}		
+		}
+		
+		stage ('Copy-in-S3'){
+			steps{
+		    dir ("/satish/webapp/target"){
+				sh "aws s3 cp webapp.war s3://my7498"
+				}
+			}		
+		}
+		
+		stage ('Deploy-war-in-slave-dir') {
+		agent {node 'slave-one'}
+			steps {
+			    dir ("/slave-dir"){
+                   sh "aws s3 cp s3://my7498/webapp.war /slave-dir"
+				   //sh "docker build -t my-tomcat ."
+				   sh 'docker build -t satish7498/my-app-1.0 .'
+				   sh "docker run -d -p 8022:8080 satish7498/my-app-1.0"
+				  // sh "docker run -d -p 8023:8080 my-tomcat"
+				  // sh "docker tag my-tomcat satish7498/tomcat-b:1.0"
+				  // sh "echo $docker_PSW | docker login -u $docker_USR --password-stdin"
+				 //  sh "docker push satish7498/tomcat-b:1.0"
+                    }
+                }		
+			}
+			
+		stage ("Push-to-DockerHub") {
+		agent {node 'slave-one'}
+		    steps {
+		        script {
+		            withCredentials([string(credentialsId: 'satish7498', variable: 'dockerhubpwd')]) {
+                    sh 'docker login -u satish7498 -p ${dockerhubpwd}'
+                    }
+		            sh "docker push satish7498/my-app-1.0:latest"
+		            
+		            
+		        }
+		    }
+		}
+		
+		stage ("Pull-from-DockerHub") {
+		agent {node 'slave-two'}
+		    steps {
+					sh "yum install docker -y"
+					sh "service docker start"
+		            sh "docker pull satish7498/my-app-1.0:latest"
+					sh "docker run -d -p 8033:8080 satish7498/my-app-1.0:latest"
+		            
+		            
+		        }
+		    }
+		}
+		
+		}
+	
